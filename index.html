@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$P2P | THE SATOSHI PROTOCOL</title>
+    <style>
+        :root { --green: #39FF14; --bg: #050505; --panel: rgba(0, 25, 0, 0.85); --orange: #ff9900; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--green); font-family: 'Courier New', monospace; overflow-x: hidden; }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; }
+        
+        .main-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px; max-width: 1400px; margin: auto; padding-bottom: 100px; position: relative; z-index: 10; }
+        .panel { background: var(--panel); border: 2px solid var(--green); padding: 15px; box-shadow: 0 0 15px rgba(57, 255, 20, 0.2); margin-bottom: 20px; }
+        
+        /* Social Links */
+        .social-links { display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; }
+        .social-btn { 
+            text-decoration: none; color: #000; background: var(--green); padding: 8px 20px; font-weight: 900; 
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); transition: 0.3s; 
+        }
+        .social-btn:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--green); }
+        .social-btn.pump { background: #fff; }
+
+        /* Bonding Curve & Stats */
+        .bonding-curve { margin-bottom: 20px; }
+        .progress-container { width: 100%; height: 20px; background: #002200; border: 1px solid var(--green); margin-top: 10px; position: relative; }
+        .progress-bar { width: 0%; height: 100%; background: var(--green); box-shadow: 0 0 10px var(--green); transition: width 1.5s ease-in-out; }
+        
+        .timer-val { font-size: 3rem; font-weight: 900; text-align: center; text-shadow: 0 0 15px var(--green); }
+        .stat-card { text-align: center; border: 1px solid var(--green); padding: 10px; }
+        .stat-card span { font-size: 1.8rem; display: block; font-weight: 900; color: #fff; }
+
+        /* BTC Area */
+        .btc-panel { border-color: var(--orange); text-align: center; }
+        .btc-val-big { font-size: 2rem; color: #fff; text-shadow: 0 0 20px var(--orange); font-weight: 900; }
+
+        /* Table & Feed */
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+        th { text-align: left; border-bottom: 1px solid var(--green); padding: 8px; color: #888; }
+        td { padding: 8px; border-bottom: 1px solid #113311; }
+        .trade-feed { height: 250px; overflow-y: hidden; line-height: 1.6; font-size: 0.8rem; }
+        .buy { color: #00ff00; } .sell { color: #ff0000; }
+
+        /* Fixed Controls */
+        .fixed-controls { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 2px solid var(--green); padding: 15px 0; text-align: center; z-index: 100; }
+        .btn-main { background: transparent; color: var(--green); border: 2px solid var(--green); padding: 10px 30px; font-weight: 900; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <canvas id="matrix"></canvas>
+
+    <div class="main-grid">
+        <div class="left-col">
+            <div class="social-links">
+                <a href="https://x.com/SatoshiP2P" target="_blank" class="social-btn">X / TWITTER</a>
+                <a href="https://pump.fun/48Yqgwk6N87G5aCEn3CKyqysvb8dgbfwoc8An1PEpump" target="_blank" class="social-btn pump">PUMP.FUN</a>
+            </div>
+
+            <div class="panel">
+                <div id="epoch-timer" class="timer-val">00:05:00</div>
+                <p style="text-align: center; margin: 5px 0 0 0; font-size: 0.7rem; color: #888;">[ NEXT REWARD EPOCH ]</p>
+            </div>
+
+            <div class="panel bonding-curve">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span>BONDING CURVE PROGRESS</span>
+                    <span id="progress-percent">0.00%</span>
+                </div>
+                <div class="progress-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div class="panel stat-card">MARKET CAP<span id="mc-val">$0.00</span></div>
+                <div class="panel stat-card">HOLDERS (>1M)<span id="holder-count">0</span></div>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin: 0; font-size: 1rem;">ELIGIBLE REWARD RECIPIENTS</h3>
+                <table>
+                    <thead><tr><th>RANK</th><th>ADDRESS</th><th>AMOUNT</th></tr></thead>
+                    <tbody id="holder-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div class="panel btc-panel">
+                <p style="margin:0; color: var(--orange); font-size: 0.8rem;">ACCUMULATED REWARDS</p>
+                <div id="accum-val" class="btc-val-big">0.000000 BTC</div>
+                <p style="margin:10px 0 0 0; font-size: 0.7rem; color: #888;">DISTRIBUTED: <span id="distro-total">1.258</span> BTC</p>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin:0 0 10px 0; font-size: 0.9rem;">LIVE NETWORK TRADES</h3>
+                <div class="trade-feed" id="trade-feed"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed-controls">
+        <button class="btn-main" onclick="toggleMusic()">ACTIVATE ENCRYPTION AUDIO</button>
+    </div>
+    <audio id="bgMusic" loop><source src="bg-music.mp3" type="audio/mpeg"></audio>
+
+    <script>
+        // Matrix Animation (Gốc của bạn)
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        const drops = Array(Math.floor(canvas.width/16)).fill(1);
+        function draw() {
+            ctx.fillStyle = "rgba(0,0,0,0.05)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = "#39FF14"; ctx.font = "16px monospace";
+            drops.forEach((y, i) => {
+                ctx.fillText("01"[Math.floor(Math.random()*2)], i*16, y*16);
+                if(y*16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            });
+        }
+        setInterval(draw, 40);
+
+        // DATA SYNC LOGIC
+        async function updateProtocol() {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/stats');
+                const data = await response.json();
+
+                // Stats
+                document.getElementById('mc-val').innerText = '$' + data.market_cap;
+                document.getElementById('holder-count').innerText = data.holders_count;
+                document.getElementById('accum-val').innerText = data.btc_rewards.accumulated + " BTC";
+                
+                // Bonding Curve calculation (Target 69k for Pump.fun)
+                let mcapNumeric = parseFloat(data.market_cap.replace(/,/g, ''));
+                let percent = (mcapNumeric / 69000) * 100;
+                if(percent > 100) percent = 100;
+                document.getElementById('progress-bar').style.width = percent + '%';
+                document.getElementById('progress-percent').innerText = percent.toFixed(2) + '%';
+
+                // Table
+                document.getElementById('holder-table').innerHTML = data.top_holders.map((h, i) => `
+                    <tr><td>${i+1}</td><td>${h.address.slice(0,6)}...${h.address.slice(-4)}</td><td>${h.amount.toLocaleString()}</td></tr>
+                `).join('');
+
+                // Trades
+                document.getElementById('trade-feed').innerHTML = data.recent_trades.map(t => `
+                    <div class="${t.type.toLowerCase()}">[${new Date().toLocaleTimeString()}] ${t.type} ${t.sol.toFixed(2)} SOL - ${t.addr}</div>
+                `).join('');
+            } catch(e) { console.log("Reconnecting..."); }
+        }
+
+        setInterval(updateProtocol, 5000);
+        updateProtocol();
+
+        function toggleMusic() { const a = document.getElementById('bgMusic'); a.paused ? a.play() : a.pause(); }
+    </script>
+</body>
+</html>
